@@ -1,1 +1,1 @@
-{"title":"Rabbit News","url":"https://badrazzam9.github.io/rabbit-news/","description":"A Rabbit r1 news reader with breaking, regional, and search-driven headline wheels.","iconUrl":"https://badrazzam9.github.io/rabbit-news/creation-icon.svg","themeColor":"#fe5000"}
+{"title":"Rabbit News","url":"https://badrazzam9.github.io/rabbit-news/","description":"A Rabbit r1 news reader with breaking, regional, and search-driven headline wheels.","iconUrl":"https://badrazzam9.github.io/rabbit-news/creation-icon.png","themeColor":"#fe5000"}
