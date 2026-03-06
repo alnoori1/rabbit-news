@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=288, initial-scale=1.0, user-scalable=no" />
+  <title>Rabbit News</title>
+  <link rel="icon" href="data:," />
+  <link rel="stylesheet" href="./styles.css?v=64" />
+</head>
+
+<body>
+  <nav class="chrome-nav">
+    <button id="navRefresh" class="nav-btn" title="Refresh" aria-label="Refresh">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M20 11a8 8 0 1 0 2 5.3" />
+        <path d="M20 4v7h-7" />
+      </svg>
+      <span class="sr-only">Refresh</span>
+    </button>
+    <button id="navHome" class="nav-btn" title="Home" aria-label="Home">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M3 10.5 12 3l9 7.5" />
+        <path d="M5.5 9.5V20h13V9.5" />
+      </svg>
+      <span class="sr-only">Home</span>
+    </button>
+    <span id="viewLabel" class="view-label">Home</span>
+    <div id="fontTools" class="font-tools hidden" aria-label="Font size controls">
+      <button id="fontDown" class="nav-btn nav-btn-font" title="Smaller text" aria-label="Smaller text">A−</button>
+      <button id="fontUp" class="nav-btn nav-btn-font" title="Larger text" aria-label="Larger text">A+</button>
+    </div>
+  </nav>
+
+  <main class="app-shell">
+    <section id="viewHome" class="view">
+      <header class="hero">
+        <h1>Rabbit News</h1>
+      </header>
+
+      <!-- Compact Top Bar -->
+      <div class="top-bar">
+        <form id="searchForm" class="search-form">
+          <input type="search" id="searchInput" class="search-input" placeholder="Search news..." enterkeyhint="search"
+            required />
+        </form>
+        <select id="regionSelect" class="region-select" aria-label="Select news region">
+          <option value="" disabled selected>🌍 By Region</option>
+          <!-- Options injected by JS -->
+        </select>
+      </div>
+
+      <section class="card breaking-section">
+        <h3>⚡ Breaking News</h3>
+        <div id="breakingDeck" class="deck breaking-wheel"></div>
+        <div id="breakingLoading" class="microcopy" style="text-align:center;padding:.3rem 0">Loading…</div>
+      </section>
+    </section>
+
+    <section id="viewCards" class="view hidden">
+      <div id="cardCounter" class="card-counter"></div>
+      <section id="deck" class="deck" aria-label="News cards stack"></section>
+      <div id="moreHint" class="more-hint hidden" aria-live="polite">
+        <span class="more-hint__icon" aria-hidden="true">↓</span>
+        <span id="moreHintText">More headlines below</span>
+      </div>
+    </section>
+
+    <section id="viewArticle" class="view hidden">
+      <article class="article-shell card">
+        <img id="articleImage" class="article-lead-image hidden" alt="" />
+        <h2 id="articleTitle">Article</h2>
+        <div id="articleSections" class="article-sections"></div>
+        <a id="articleSource" class="source-link source-link-bottom" href="#" target="_blank"
+          rel="noopener noreferrer">Open original source ↗</a>
+      </article>
+    </section>
+  </main>
+
+  <section id="status" class="status" aria-live="polite"></section>
+
+  <script src="./main.js?v=64"></script>
+</body>
+
+</html>

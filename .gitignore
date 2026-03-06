@@ -1,0 +1,5 @@
+node_modules/
+.wrangler/
+r1_creation_code_v*.png
+r1_news_fetcher_v*.png
+worker-dist.js
