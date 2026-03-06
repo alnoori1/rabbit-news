@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title>Rabbit News Icon</title>
+  <desc>Orange news card icon for the Rabbit News creation.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0%" x2="100%" y1="0%" y2="100%">
+      <stop offset="0%" stop-color="#fe5000" />
+      <stop offset="100%" stop-color="#d63b4a" />
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="56" fill="#120f15" />
+  <rect x="22" y="22" width="212" height="212" rx="42" fill="url(#bg)" />
+  <rect x="52" y="58" width="152" height="140" rx="22" fill="#fff5ef" />
+  <rect x="68" y="76" width="48" height="48" rx="12" fill="#fe5000" />
+  <rect x="124" y="78" width="62" height="10" rx="5" fill="#221823" opacity="0.9" />
+  <rect x="124" y="96" width="48" height="10" rx="5" fill="#221823" opacity="0.75" />
+  <rect x="68" y="138" width="118" height="10" rx="5" fill="#221823" opacity="0.9" />
+  <rect x="68" y="156" width="108" height="10" rx="5" fill="#221823" opacity="0.75" />
+  <rect x="68" y="174" width="92" height="10" rx="5" fill="#221823" opacity="0.6" />
+  <circle cx="196" cy="196" r="22" fill="#221823" />
+  <path d="M186 196h20M196 186v20" stroke="#fff5ef" stroke-linecap="round" stroke-width="8" />
+</svg>
