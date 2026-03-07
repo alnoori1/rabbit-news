@@ -2,7 +2,7 @@
    R1 News Fetcher v26 — main.js
    ═══════════════════════════════════════════════ */
 
-const APP_VERSION = '83';
+const APP_VERSION = '84';
 const API_BASE = (localStorage.getItem('r1_api_base') || 'https://rabbit-news-worker.swordandscroll.workers.dev').replace(/\/$/, '');
 const BREAKING_FEEDS = [
   'https://feeds.bbci.co.uk/news/world/rss.xml',
@@ -21,15 +21,16 @@ const SHELL_VERSION_KEY = 'r1_shell_version';
 const SUPERSEDED_REQUEST_MESSAGE = 'Request replaced by a newer action.';
 const CARD_BATCH_SIZE = 20;
 const TAP_OPEN_MAX_DELTA = 12;
-const WHEEL_ANIMATION_DURATION_MS = 1480;
+const TOUCH_SCROLL_MIN_DELTA = 18;
+const HARDWARE_SCROLL_COOLDOWN_MS = 110;
+const WHEEL_ANIMATION_DURATION_MS = 820;
 const WHEEL_CONFIG = {
   maxVisibleOffset: 2.35,
   angleStep: 72,
   verticalRadius: 122,
   depthRadius: 164,
   minScale: 0.4,
-  minOpacity: 0.16,
-  maxBlur: 1.15,
+  minOpacity: 0.24,
   sideTilt: 8
 };
 const LIVE_COVERAGE_TITLE_RE = /\b(live updates?|what to know|as it happened|live blog|minute by minute|watch live)\b/i;
@@ -813,7 +814,6 @@ function animateWheel(positionKey, targetKey, frameKey, startKey, fromKey, rende
 
 function scrollCards(direction) {
   if (!state.cards.length) return;
-  if (state.cardWheelFrame) return;
   const currentIndex = Math.max(0, Math.min(state.loadedCardCount - 1, Math.round(state.cardWheelTarget)));
   if (direction > 0 && currentIndex >= state.loadedCardCount - 1 && state.loadedCardCount < state.cards.length) {
     appendNextCardBatch();
@@ -925,10 +925,7 @@ function applyWheelTransformsToNodes(cards, activePosition, { updateLoadMore = f
     const x = offset * -4.5;
     const scale = WHEEL_CONFIG.minScale + ((1 - WHEEL_CONFIG.minScale) * normalizedCos);
     const opacity = WHEEL_CONFIG.minOpacity + ((1 - WHEEL_CONFIG.minOpacity) * normalizedCos);
-    const blur = absOff === 0 ? 0 : Math.min(WHEEL_CONFIG.maxBlur, absOff * 0.56);
-    const shadowAlpha = 0.18 + (normalizedCos * 0.42);
     const rotateY = offset * -WHEEL_CONFIG.sideTilt;
-    const brightness = 0.58 + (normalizedCos * 0.42);
     const zIndex = Math.round(400 + (normalizedCos * 120) - (absOff * 6));
 
     card.style.cssText = `
@@ -937,8 +934,6 @@ function applyWheelTransformsToNodes(cards, activePosition, { updateLoadMore = f
       opacity: ${opacity.toFixed(3)};
       z-index: ${zIndex};
       pointer-events: ${absOff < 0.36 ? 'auto' : 'none'};
-      filter: blur(${blur.toFixed(2)}px) brightness(${brightness.toFixed(3)});
-      box-shadow: 0 ${10 + (absOff * 3)}px ${30 + (absOff * 4)}px rgba(0, 0, 0, ${shadowAlpha.toFixed(3)});
     `;
     card.classList.toggle('is-active', i === focusedIndex);
   });
@@ -962,7 +957,6 @@ function applyBreakingWheelTransforms() {
 
 function scrollBreaking(direction) {
   if (!state.breakingCards.length) return;
-  if (state.breakingWheelFrame) return;
   const currentIndex = Math.max(0, Math.min(state.breakingCards.length - 1, Math.round(state.breakingWheelTarget)));
   const nextIndex = Math.max(0, Math.min(state.breakingCards.length - 1, currentIndex + direction));
   if (nextIndex === state.breakingWheelTarget) return;
@@ -1677,8 +1671,8 @@ function bindUi() {
   }, { passive: true });
   els.deck.addEventListener('touchend', (event) => {
     const touchY = event.changedTouches[0]?.clientY || 0;
-    if (state.deckTouchStartY - touchY > 30) scrollCards(1);
-    else if (touchY - state.deckTouchStartY > 30) scrollCards(-1);
+    if (state.deckTouchStartY - touchY > TOUCH_SCROLL_MIN_DELTA) scrollCards(1);
+    else if (touchY - state.deckTouchStartY > TOUCH_SCROLL_MIN_DELTA) scrollCards(-1);
   }, { passive: true });
 
   els.breakingDeck.addEventListener('touchstart', (event) => {
@@ -1686,8 +1680,8 @@ function bindUi() {
   }, { passive: true });
   els.breakingDeck.addEventListener('touchend', (event) => {
     const touchY = event.changedTouches[0]?.clientY || 0;
-    if (state.breakingTouchStartY - touchY > 30) scrollBreaking(1);
-    else if (touchY - state.breakingTouchStartY > 30) scrollBreaking(-1);
+    if (state.breakingTouchStartY - touchY > TOUCH_SCROLL_MIN_DELTA) scrollBreaking(1);
+    else if (touchY - state.breakingTouchStartY > TOUCH_SCROLL_MIN_DELTA) scrollBreaking(-1);
   }, { passive: true });
 
   window.addEventListener('resize', refreshActiveCard, { passive: true });
@@ -1729,7 +1723,7 @@ function bindUi() {
 /* ═══ R1 hardware (scroll + PTT) with throttle ═══ */
 function initR1Hardware() {
   let scrollLock = false;
-  const SCROLL_COOLDOWN = 180;
+  const SCROLL_COOLDOWN = HARDWARE_SCROLL_COOLDOWN_MS;
 
   function throttledScroll(handler) {
     if (scrollLock) return;

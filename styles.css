@@ -389,10 +389,11 @@ input {
   left: 0;
   width: 100%;
   cursor: pointer;
-  will-change: transform, opacity, filter;
+  will-change: transform, opacity;
   transform-origin: center center;
   transform-style: preserve-3d;
   backface-visibility: hidden;
+  contain: layout paint;
 }
 
 .news-card-shell {
@@ -403,14 +404,15 @@ input {
   background:
     linear-gradient(180deg, rgba(29, 38, 53, .98), rgba(16, 22, 32, .98)),
     linear-gradient(135deg, rgba(255, 255, 255, .02), rgba(255, 255, 255, 0));
-  box-shadow: 0 10px 30px rgba(0, 0, 0, .45);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, .34);
   transform: translateZ(0);
-  transition: border-color .24s ease, box-shadow .24s ease, opacity .24s ease;
+  transition: border-color .16s ease, box-shadow .16s ease, opacity .16s ease;
+  backface-visibility: hidden;
 }
 
 .news-card.is-active .news-card-shell {
   border-color: rgba(240, 84, 98, .88);
-  box-shadow: 0 0 24px rgba(240, 84, 98, .28), 0 16px 40px rgba(0, 0, 0, .54);
+  box-shadow: 0 0 18px rgba(240, 84, 98, .22), 0 12px 28px rgba(0, 0, 0, .42);
 }
 
 .news-card-image {
