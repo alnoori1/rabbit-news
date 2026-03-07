@@ -27,6 +27,8 @@ const WHEEL_CONFIG = {
 const LIVE_COVERAGE_TITLE_RE = /\b(live updates?|what to know|as it happened|live blog|minute by minute|watch live)\b/i;
 const LIVE_COVERAGE_URL_RE = /\/(?:live|live-updates?|blogs?)\/|\/live-updates(?:[-/]|$)|[?&]page=live\b/i;
 const VIDEO_STORY_RE = /\/videos?\//i;
+const READER_INCOMPATIBLE_URL_RE = /\/(?:videos?|video|audio|podcasts?|gallery|photos|pictures|slideshow|interactive|shorts?)\//i;
+const READER_INCOMPATIBLE_TITLE_RE = /^(watch|listen|photos):/i;
 const AGGREGATOR_HOST_PENALTIES = {
   'aol.com': 1.5,
   'msn.com': 1.8,
@@ -235,7 +237,8 @@ const state = {
   loadedCardCount: 0,
   seenArticleIds: new Set(),
   sourceHealth: {},
-  suppressCardEnterUntil: 0
+  suppressCardEnterUntil: 0,
+  currentArticleContext: null
 };
 
 /* ═══ Status / Loading ═══ */
@@ -460,6 +463,17 @@ function isVideoStoryCard(card) {
   );
 }
 
+function isReaderFriendlyCard(card) {
+  const normalizedCard = normalizeCard(card);
+  if (!normalizedCard.url || isPaywalled(normalizedCard.url)) return false;
+  if (isLiveCoverageCard(normalizedCard)) return false;
+  if (isVideoStoryCard(normalizedCard)) return false;
+  if (READER_INCOMPATIBLE_URL_RE.test(normalizedCard.url || '')) return false;
+  if (READER_INCOMPATIBLE_TITLE_RE.test(normalizedCard.title || '')) return false;
+  if (getSourcePenalty(normalizedCard.host) >= 3.2) return false;
+  return true;
+}
+
 function scoreBreakingCard(card) {
   const normalizedCard = normalizeCard(card);
   let score = scoreFreshCard(normalizedCard);
@@ -472,7 +486,7 @@ function sortFreshCards(cards = [], { maxAgeHours = 96 } = {}) {
   const cutoff = Date.now() - (maxAgeHours * 60 * 60 * 1000);
   return cards
     .map(normalizeCard)
-    .filter((card) => card.url && !isPaywalled(card.url))
+    .filter(isReaderFriendlyCard)
     .filter((card) => !card.publishedTs || card.publishedTs >= cutoff)
     .sort((left, right) => scoreFreshCard(right) - scoreFreshCard(left));
 }
@@ -481,7 +495,7 @@ function sortBreakingCards(cards = [], { maxAgeHours = 96 } = {}) {
   const cutoff = Date.now() - (maxAgeHours * 60 * 60 * 1000);
   const normalized = cards
     .map(normalizeCard)
-    .filter((card) => card.url && !isPaywalled(card.url))
+    .filter(isReaderFriendlyCard)
     .filter((card) => !card.publishedTs || card.publishedTs >= cutoff);
 
   const standalone = normalized
@@ -527,7 +541,7 @@ function scoreSearchCard(card, query) {
 function sortSearchCards(cards = [], query = '') {
   return cards
     .map(normalizeCard)
-    .filter((card) => card.url && !isPaywalled(card.url))
+    .filter(isReaderFriendlyCard)
     .sort((left, right) => scoreSearchCard(right, query) - scoreSearchCard(left, query));
 }
 
@@ -713,7 +727,7 @@ function goHomeView() {
 
 /* ═══ Font controls ═══ */
 function applyArticleFontScale() {
-  state.articleFontScale = Math.max(0.62, Math.min(1.0, Number(state.articleFontScale) || 0.72));
+  state.articleFontScale = Math.max(0.62, Math.min(1.72, Number(state.articleFontScale) || 0.72));
   const sections = document.getElementById('articleSections');
   if (sections) sections.style.fontSize = `${state.articleFontScale}em`;
   storageSave(ARTICLE_FONT_KEY, state.articleFontScale);
@@ -777,53 +791,13 @@ function createCardMetaElement(card) {
 
 /* ═══ Breaking news as 3D wheel ═══ */
 function createBreakingCardElement(card, index) {
-  const normalizedCard = normalizeCard(card);
-  const el = document.createElement('article');
-  el.className = 'news-card';
-  el.dataset.index = String(index);
-
-  if (normalizedCard.image?.url) {
-    const img = document.createElement('img');
-    img.className = 'news-card-image';
-    img.src = normalizedCard.image.url;
-    img.alt = normalizedCard.title || '';
-    img.loading = 'lazy';
-    img.decoding = 'async';
-    img.referrerPolicy = 'no-referrer';
-    img.onerror = () => {
-      img.remove();
-      const ph = document.createElement('div');
-      ph.className = 'news-card-image news-card-image--placeholder';
-      ph.textContent = 'Breaking';
-      el.prepend(ph);
-    };
-    el.appendChild(img);
-  } else {
-    const ph = document.createElement('div');
-    ph.className = 'news-card-image news-card-image--placeholder';
-    ph.textContent = 'Breaking';
-    el.appendChild(ph);
-  }
-
-  const content = document.createElement('div');
-  content.className = 'news-card-content';
-  const meta = createCardMetaElement(normalizedCard);
-  const title = document.createElement('h3');
-  title.textContent = normalizedCard.title || `Story ${index + 1}`;
-  content.append(meta, title);
-  el.appendChild(content);
-
-  bindCardOpen(el, () => {
-    if (normalizedCard.url) readArticle(normalizedCard.url, normalizedCard.image?.url, normalizedCard);
-  });
-  return el;
+  return createCardElement(card, index, { placeholderLabel: 'Breaking', includeSummary: true });
 }
 
-function applyBreakingWheelTransforms() {
-  const cards = [...els.breakingDeck.querySelectorAll('.news-card')];
+function applyWheelTransformsToNodes(cards, active, { updateLoadMore = false, counterId = null } = {}) {
   if (!cards.length) return;
+  if (updateLoadMore) updateLoadMoreHint();
 
-  const active = state.breakingIndex;
   cards.forEach((card, i) => {
     const offset = i - active;
     const absOff = Math.abs(offset);
@@ -852,9 +826,17 @@ function applyBreakingWheelTransforms() {
     card.classList.toggle('is-active', i === active);
   });
 
-  // Update breaking counter
-  const bc = document.getElementById('breakCounter');
-  if (bc) bc.textContent = `${active + 1} / ${cards.length}`;
+  if (counterId) {
+    const counter = document.getElementById(counterId);
+    if (counter) counter.textContent = `${active + 1} / ${cards.length}`;
+  }
+}
+
+function applyBreakingWheelTransforms() {
+  const cards = [...els.breakingDeck.querySelectorAll('.news-card')];
+  if (!cards.length) return;
+
+  applyWheelTransformsToNodes(cards, state.breakingIndex, { counterId: 'breakCounter' });
 }
 
 function scrollBreaking(direction) {
@@ -920,7 +902,12 @@ function bindCardOpen(element, handler) {
   }, { passive: false });
 }
 
-function createCardElement(card, index, { shouldShowLoadMore = false, nextBatchCount = 0 } = {}) {
+function createCardElement(card, index, {
+  shouldShowLoadMore = false,
+  nextBatchCount = 0,
+  placeholderLabel = 'Top Story',
+  includeSummary = true
+} = {}) {
   const normalizedCard = normalizeCard(card);
   const article = document.createElement('article');
   article.className = 'news-card animate-in';
@@ -939,14 +926,14 @@ function createCardElement(card, index, { shouldShowLoadMore = false, nextBatchC
       img.remove();
       const ph = document.createElement('div');
       ph.className = 'news-card-image news-card-image--placeholder';
-      ph.textContent = 'Top Story';
+      ph.textContent = placeholderLabel;
       article.prepend(ph);
     };
     article.appendChild(img);
   } else {
     const ph = document.createElement('div');
     ph.className = 'news-card-image news-card-image--placeholder';
-    ph.textContent = 'Top Story';
+    ph.textContent = placeholderLabel;
     article.appendChild(ph);
   }
 
@@ -957,10 +944,13 @@ function createCardElement(card, index, { shouldShowLoadMore = false, nextBatchC
   const title = document.createElement('h3');
   title.textContent = normalizedCard.title || `Story ${index + 1}`;
 
-  const snippet = document.createElement('p');
-  snippet.textContent = normalizedCard.summary || 'Tap to open full story.';
+  content.append(meta, title);
 
-  content.append(meta, title, snippet);
+  if (includeSummary) {
+    const snippet = document.createElement('p');
+    snippet.textContent = normalizedCard.summary || 'Tap to open full story.';
+    content.appendChild(snippet);
+  }
 
   if (shouldShowLoadMore) {
     const loadMore = document.createElement('div');
@@ -993,41 +983,10 @@ function createCardElement(card, index, { shouldShowLoadMore = false, nextBatchC
 function applyWheelTransforms() {
   const cards = [...els.deck.querySelectorAll('.news-card')];
   if (!cards.length) return;
-
-  const active = state.activeCardIndex;
-  updateLoadMoreHint();
-
-  cards.forEach((card, i) => {
-    const offset = i - active; // -2, -1, 0, 1, 2...
-    const absOff = Math.abs(offset);
-
-    if (absOff > WHEEL_CONFIG.maxVisibleOffset) {
-      card.style.cssText = 'display:none';
-      return;
-    }
-
-    const angle = offset * WHEEL_CONFIG.angleStep;
-    const radius = WHEEL_CONFIG.radius;
-    const y = Math.sin(angle * Math.PI / 180) * radius;
-    const z = (Math.cos(angle * Math.PI / 180) - 1) * radius;
-    const scale = Math.max(WHEEL_CONFIG.minScale, Math.cos(angle * Math.PI / 180));
-    const opacity = Math.max(0, Math.cos(angle * Math.PI / 180) * 1.1 - 0.1);
-    const blur = Math.min(2.8, absOff * 1.1);
-
-    card.style.cssText = `
-      display: block;
-      transform: translateY(${y}px) translateZ(${z}px) rotateX(${-angle}deg) scale(${scale.toFixed(3)});
-      opacity: ${opacity.toFixed(3)};
-      z-index: ${10 - absOff};
-      pointer-events: ${absOff === 0 ? 'auto' : 'none'};
-      filter: blur(${blur.toFixed(2)}px);
-    `;
-
-    card.classList.toggle('is-active', i === active);
-  });
+  applyWheelTransformsToNodes(cards, state.activeCardIndex, { updateLoadMore: true });
 
   // Card counter
-  els.cardCounter.textContent = `${active + 1} / ${state.cards.length}`;
+  els.cardCounter.textContent = `${state.activeCardIndex + 1} / ${state.cards.length}`;
 }
 
 function refreshActiveCard() {
@@ -1203,6 +1162,11 @@ function ensureArticleAssessment(data) {
 
 /* ═══ Article with lead image (always preserved) ═══ */
 function renderArticle(data, fallbackImageUrl) {
+  state.currentArticleContext = {
+    url: data.url,
+    imageUrl: fallbackImageUrl || data.image?.url || data.leadImage || '',
+    cardMeta: state.currentArticleContext?.cardMeta || null
+  };
   els.articleTitle.textContent = data.title || 'Article';
   setArticleNotice(
     data?.warnings?.length ? summarizeWarnings(data.warnings) || 'Reader view cleaned for better readability.' : '',
@@ -1262,6 +1226,11 @@ function renderArticle(data, fallbackImageUrl) {
 }
 
 function renderArticleFallback(url, fallbackImageUrl, message) {
+  state.currentArticleContext = {
+    url,
+    imageUrl: fallbackImageUrl || '',
+    cardMeta: state.currentArticleContext?.cardMeta || null
+  };
   const host = (() => {
     try {
       return new URL(url).hostname.replace(/^www\./, '');
@@ -1386,6 +1355,11 @@ async function searchNews(query) {
 
 async function readArticle(url, cardImageUrl, cardMeta = null) {
   if (cardMeta) markCardSeen(cardMeta);
+  state.currentArticleContext = {
+    url,
+    imageUrl: cardImageUrl || '',
+    cardMeta: cardMeta || null
+  };
   if (isPaywalled(url)) {
     setStatus('⚠️ This source may require a subscription.', { persist: true });
   }
@@ -1487,6 +1461,8 @@ function bindUi() {
       } else if (state.currentFeedContext.type === 'search') {
         searchNews(state.currentFeedContext.query);
       }
+    } else if (state.view === 'article' && state.currentArticleContext?.url) {
+      readArticle(state.currentArticleContext.url, state.currentArticleContext.imageUrl, state.currentArticleContext.cardMeta);
     } else {
       goHomeView();
       // Clear out search input and trigger fresh fetch
@@ -1518,8 +1494,8 @@ function bindUi() {
   // Breaking news nav arrows removed per user request
 
   // Font controls
-  els.fontDown.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); changeArticleFont(-0.08); });
-  els.fontUp.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); changeArticleFont(0.08); });
+  els.fontDown.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); changeArticleFont(-0.1); });
+  els.fontUp.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); changeArticleFont(0.12); });
 
   els.deck.addEventListener('touchstart', (event) => {
     state.deckTouchStartY = event.touches[0]?.clientY || 0;
@@ -1554,8 +1530,8 @@ function bindUi() {
       return;
     }
     if (state.view === 'article') {
-      if (event.key === '+' || event.key === '=') { event.preventDefault(); changeArticleFont(0.08); }
-      else if (event.key === '-') { event.preventDefault(); changeArticleFont(-0.08); }
+      if (event.key === '+' || event.key === '=') { event.preventDefault(); changeArticleFont(0.12); }
+      else if (event.key === '-') { event.preventDefault(); changeArticleFont(-0.1); }
     }
   });
 
@@ -1634,7 +1610,7 @@ function initR1Hardware() {
 /* ═══ Service Worker registration & cache busting ═══ */
 function registerSW() {
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js?v=67').then(reg => {
+    navigator.serviceWorker.register('./sw.js?v=68').then(reg => {
       reg.addEventListener('updatefound', () => {
         const newWorker = reg.installing;
         newWorker.addEventListener('statechange', () => {
