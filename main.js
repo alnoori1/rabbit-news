@@ -2,6 +2,7 @@
    R1 News Fetcher v26 — main.js
    ═══════════════════════════════════════════════ */
 
+const APP_VERSION = '72';
 const API_BASE = (localStorage.getItem('r1_api_base') || 'https://rabbit-news-worker.swordandscroll.workers.dev').replace(/\/$/, '');
 const BREAKING_FEEDS = [
   'https://feeds.bbci.co.uk/news/world/rss.xml',
@@ -18,6 +19,7 @@ const SEEN_ARTICLE_KEY = 'r1_seen_article_ids_v1';
 const SOURCE_HEALTH_KEY = 'r1_source_health_v1';
 const SUPERSEDED_REQUEST_MESSAGE = 'Request replaced by a newer action.';
 const CARD_BATCH_SIZE = 20;
+const TAP_OPEN_MAX_DELTA = 12;
 const WHEEL_CONFIG = {
   maxVisibleOffset: 3,
   angleStep: 62,
@@ -932,15 +934,50 @@ async function loadBreakingNewsInline() {
 /* ═══ #3: Card creation with entrance animations ═══ */
 function bindCardOpen(element, handler) {
   let lastTouchOpenAt = 0;
+  let touchStartX = 0;
+  let touchStartY = 0;
+  let touchMoved = false;
+  let activeTouchId = null;
+
   element.addEventListener('click', () => {
     if (Date.now() - lastTouchOpenAt < 450) return;
     handler();
   });
+  element.addEventListener('touchstart', (ev) => {
+    const touch = ev.changedTouches[0];
+    if (!touch) return;
+    activeTouchId = touch.identifier;
+    touchStartX = touch.clientX;
+    touchStartY = touch.clientY;
+    touchMoved = false;
+  }, { passive: true });
+  element.addEventListener('touchmove', (ev) => {
+    const touch = Array.from(ev.changedTouches).find((entry) => entry.identifier === activeTouchId) || ev.changedTouches[0];
+    if (!touch) return;
+    if (
+      Math.abs(touch.clientX - touchStartX) > TAP_OPEN_MAX_DELTA ||
+      Math.abs(touch.clientY - touchStartY) > TAP_OPEN_MAX_DELTA
+    ) {
+      touchMoved = true;
+    }
+  }, { passive: true });
   element.addEventListener('touchend', (ev) => {
+    const touch = Array.from(ev.changedTouches).find((entry) => entry.identifier === activeTouchId) || ev.changedTouches[0];
+    if (!touch) return;
+    const deltaX = Math.abs(touch.clientX - touchStartX);
+    const deltaY = Math.abs(touch.clientY - touchStartY);
+    activeTouchId = null;
+    if (touchMoved || deltaX > TAP_OPEN_MAX_DELTA || deltaY > TAP_OPEN_MAX_DELTA) {
+      return;
+    }
     ev.preventDefault();
     lastTouchOpenAt = Date.now();
     handler();
   }, { passive: false });
+  element.addEventListener('touchcancel', () => {
+    touchMoved = true;
+    activeTouchId = null;
+  }, { passive: true });
 }
 
 function createCardElement(card, index, {
@@ -1635,12 +1672,9 @@ function initR1Hardware() {
     });
   });
 
-  // PTT: open active card in cards view
+  // Map the side button to a consistent back action outside home.
   window.addEventListener('sideClick', () => {
-    if (state.view === 'cards') {
-      const active = state.cards[state.activeCardIndex];
-      if (active?.url) readArticle(active.url, active.image?.url);
-    } else if (state.view === 'article') {
+    if (state.view === 'article' || state.view === 'cards') {
       goBackView();
     }
   });
@@ -1649,7 +1683,7 @@ function initR1Hardware() {
 /* ═══ Service Worker registration & cache busting ═══ */
 function registerSW() {
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js?v=68').then(reg => {
+    navigator.serviceWorker.register(`./sw.js?v=${APP_VERSION}`).then(reg => {
       reg.addEventListener('updatefound', () => {
         const newWorker = reg.installing;
         newWorker.addEventListener('statechange', () => {

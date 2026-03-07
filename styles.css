@@ -42,6 +42,7 @@ body {
   position: sticky;
   top: 0;
   z-index: 20;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: .35rem;
@@ -77,8 +78,10 @@ body {
 }
 
 #navRefresh svg {
-  width: 13px;
-  height: 13px;
+  width: 11px;
+  height: 11px;
+  transform: translateY(-1px);
+  stroke-width: 1.75;
 }
 
 .nav-btn:disabled {
@@ -130,22 +133,27 @@ body {
   max-width: 288px;
   width: 100%;
   margin: 0 auto;
-  padding: .1rem 0;
+  padding: 0;
   overflow-x: hidden;
   flex: 1;
-  /* Stretch vertically to fill available 100vh space */
+  min-height: 0;
   display: flex;
   flex-direction: column;
 }
 
 .view {
-  margin-top: .2rem;
+  margin-top: .1rem;
   overflow-x: hidden;
   max-width: 100%;
   width: 100%;
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
+}
+
+#viewHome {
+  overflow: hidden;
 }
 
 .hidden {
@@ -153,7 +161,7 @@ body {
 }
 
 .hero {
-  margin: .05rem .2rem;
+  margin: 0 .2rem .04rem;
 }
 
 .hero h1 {
@@ -206,7 +214,7 @@ input {
 .top-bar {
   display: flex;
   gap: .2rem;
-  margin-bottom: .28rem;
+  margin-bottom: .16rem;
   flex-shrink: 0;
 }
 
@@ -217,7 +225,7 @@ input {
 
 .search-input {
   width: 100%;
-  min-height: 2.3rem;
+  min-height: 2.1rem;
   padding: .42rem .62rem;
   border-radius: 11px;
   border: 1px solid rgba(255, 255, 255, .08);
@@ -235,7 +243,7 @@ input {
 
 .region-select {
   flex: 1;
-  min-height: 2.3rem;
+  min-height: 2.1rem;
   padding: .42rem .62rem;
   border-radius: 11px;
   border: 1px solid rgba(255, 255, 255, .08);
@@ -261,7 +269,7 @@ input {
 /* ── Breaking wheel nav ── */
 .breaking-section {
   flex: 1;
-  /* Expand to fill remaining height */
+  min-height: 0;
   display: flex;
   flex-direction: column;
   margin-top: 0;
@@ -272,7 +280,7 @@ input {
 
 .breaking-section h3 {
   flex-shrink: 0;
-  margin: 0 0 .1rem 0;
+  margin: 0 0 .05rem 0;
   font-size: .75rem;
   color: #ffced3;
   text-align: center;
@@ -280,9 +288,9 @@ input {
 
 .breaking-section .deck {
   flex: 1;
-  height: 168px;
+  height: 156px;
   min-height: 0;
-  margin: 5.6vh .1rem 0;
+  margin: .45rem .1rem 0;
 }
 
 .breaking-nav {
@@ -328,7 +336,7 @@ input {
 .deck {
   position: relative;
   height: 196px;
-  margin: 11.3vh .1rem .1rem;
+  margin: .9rem .1rem .1rem;
   perspective: 820px;
   perspective-origin: center center;
   transform-style: preserve-3d;
@@ -665,7 +673,7 @@ input {
 /* ── Status bar ── */
 .status {
   max-width: 250px;
-  margin: .15rem auto .7rem;
+  margin: .08rem auto .28rem;
   padding: 0 .45rem;
   min-height: 1rem;
   color: #b5c1cf;
