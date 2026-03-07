@@ -76,6 +76,11 @@ body {
   stroke-linejoin: round;
 }
 
+#navRefresh svg {
+  width: 13px;
+  height: 13px;
+}
+
 .nav-btn:disabled {
   opacity: .42;
   cursor: default;
