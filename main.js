@@ -2,7 +2,7 @@
    R1 News Fetcher v26 — main.js
    ═══════════════════════════════════════════════ */
 
-const APP_VERSION = '77';
+const APP_VERSION = '78';
 const API_BASE = (localStorage.getItem('r1_api_base') || 'https://rabbit-news-worker.swordandscroll.workers.dev').replace(/\/$/, '');
 const BREAKING_FEEDS = [
   'https://feeds.bbci.co.uk/news/world/rss.xml',
@@ -21,12 +21,11 @@ const SHELL_VERSION_KEY = 'r1_shell_version';
 const SUPERSEDED_REQUEST_MESSAGE = 'Request replaced by a newer action.';
 const CARD_BATCH_SIZE = 20;
 const TAP_OPEN_MAX_DELTA = 12;
-const WHEEL_ANIMATION_DURATION_MS = 340;
 const WHEEL_CONFIG = {
-  maxVisibleOffset: 2.8,
-  angleStep: 60,
-  radius: 122,
-  minScale: 0.38
+  maxVisibleOffset: 2.2,
+  angleStep: 55,
+  radius: 104,
+  minScale: 0.45
 };
 const LIVE_COVERAGE_TITLE_RE = /\b(live updates?|what to know|as it happened|live blog|minute by minute|watch live)\b/i;
 const LIVE_COVERAGE_URL_RE = /\/(?:live|live-updates?|blogs?)\/|\/live-updates(?:[-/]|$)|[?&]page=live\b/i;
@@ -767,38 +766,11 @@ function goBackView() {
   if (state.view === 'cards') return setView('home');
 }
 
-function easeOutCubic(value) {
-  return 1 - Math.pow(1 - value, 3);
-}
-
-function animateWheel(positionKey, targetKey, frameKey, startKey, fromKey, render) {
+function cancelWheelAnimation(frameKey) {
   if (state[frameKey]) {
     cancelAnimationFrame(state[frameKey]);
     state[frameKey] = 0;
   }
-  state[startKey] = performance.now();
-  state[fromKey] = Number(state[positionKey]) || 0;
-
-  const step = (now) => {
-    const start = Number(state[startKey]) || now;
-    const from = Number(state[fromKey]) || 0;
-    const target = Number(state[targetKey]) || 0;
-    const progress = Math.min(1, (now - start) / WHEEL_ANIMATION_DURATION_MS);
-    const eased = easeOutCubic(progress);
-    state[positionKey] = from + ((target - from) * eased);
-    render();
-
-    if (progress >= 1) {
-      state[positionKey] = target;
-      state[frameKey] = 0;
-      render();
-      return;
-    }
-
-    state[frameKey] = requestAnimationFrame(step);
-  };
-
-  state[frameKey] = requestAnimationFrame(step);
 }
 
 function scrollCards(direction) {
@@ -809,8 +781,10 @@ function scrollCards(direction) {
   const nextIndex = Math.max(0, Math.min(state.loadedCardCount - 1, state.activeCardIndex + direction));
   if (nextIndex === state.activeCardIndex && state.cardWheelTarget === nextIndex) return;
   state.activeCardIndex = nextIndex;
+  state.cardWheelPosition = nextIndex;
   state.cardWheelTarget = nextIndex;
-  animateWheel('cardWheelPosition', 'cardWheelTarget', 'cardWheelFrame', 'cardWheelAnimationStart', 'cardWheelAnimationFrom', applyWheelTransforms);
+  cancelWheelAnimation('cardWheelFrame');
+  applyWheelTransforms();
 }
 
 function goHomeView() {
@@ -890,7 +864,7 @@ function applyWheelTransformsToNodes(cards, activePosition, { updateLoadMore = f
   if (!cards.length) return;
   if (updateLoadMore) updateLoadMoreHint();
 
-  const focusedIndex = Math.max(0, Math.min(cards.length - 1, Math.round(activePosition)));
+  const focusedIndex = Math.max(0, Math.min(cards.length - 1, activeIndex ?? Math.round(activePosition)));
   const counterIndex = activeIndex ?? focusedIndex;
 
   cards.forEach((card, i) => {
@@ -906,19 +880,19 @@ function applyWheelTransformsToNodes(cards, activePosition, { updateLoadMore = f
     const radius = WHEEL_CONFIG.radius;
     const radians = angle * Math.PI / 180;
     const cos = Math.cos(radians);
-    const y = Math.sin(radians) * radius * 0.96;
-    const z = (cos - 1) * radius * 1.14;
-    const scale = Math.max(WHEEL_CONFIG.minScale, 0.18 + (cos * 0.82));
-    const opacity = Math.max(0, 0.04 + (cos * 1.08));
-    const blur = absOff === 0 ? 0 : absOff === 1 ? 0.18 : 0.38;
-    const shadowAlpha = absOff === 0 ? 0.54 : absOff === 1 ? 0.42 : 0.28;
-    const rotateY = offset * -4.5;
+    const y = Math.sin(radians) * radius;
+    const z = (cos - 1) * radius * 1.08;
+    const scale = Math.max(WHEEL_CONFIG.minScale, cos);
+    const opacity = Math.max(0, (cos * 1.08) - 0.08);
+    const blur = absOff === 0 ? 0 : absOff < 1.1 ? 0.08 : 0.28;
+    const shadowAlpha = absOff === 0 ? 0.56 : absOff < 1.1 ? 0.42 : 0.26;
+    const rotateY = offset * -6.5;
 
     card.style.cssText = `
       display: block;
-      transform: translateY(${y.toFixed(2)}px) translateZ(${z.toFixed(2)}px) rotateX(${(-angle).toFixed(2)}deg) rotateY(${rotateY.toFixed(2)}deg) scale(${scale.toFixed(3)});
+      transform: translate3d(0, ${y.toFixed(2)}px, ${z.toFixed(2)}px) rotateX(${(-angle).toFixed(2)}deg) rotateY(${rotateY.toFixed(2)}deg) scale(${scale.toFixed(3)});
       opacity: ${opacity.toFixed(3)};
-      z-index: ${Math.round(100 - (absOff * 10))};
+      z-index: ${Math.round(100 - (absOff * 12))};
       pointer-events: ${i === focusedIndex ? 'auto' : 'none'};
       filter: blur(${blur.toFixed(2)}px);
       box-shadow: 0 ${10 + (absOff * 3)}px ${30 + (absOff * 4)}px rgba(0, 0, 0, ${shadowAlpha.toFixed(3)});
@@ -947,8 +921,10 @@ function scrollBreaking(direction) {
   const nextIndex = Math.max(0, Math.min(state.breakingCards.length - 1, state.breakingIndex + direction));
   if (nextIndex === state.breakingIndex && state.breakingWheelTarget === nextIndex) return;
   state.breakingIndex = nextIndex;
+  state.breakingWheelPosition = nextIndex;
   state.breakingWheelTarget = nextIndex;
-  animateWheel('breakingWheelPosition', 'breakingWheelTarget', 'breakingWheelFrame', 'breakingWheelAnimationStart', 'breakingWheelAnimationFrom', applyBreakingWheelTransforms);
+  cancelWheelAnimation('breakingWheelFrame');
+  applyBreakingWheelTransforms();
 }
 
 async function loadBreakingNewsInline() {

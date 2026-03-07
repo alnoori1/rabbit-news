@@ -336,8 +336,8 @@ input {
   position: relative;
   height: 196px;
   margin: .7rem .1rem .1rem;
-  perspective: 320px;
-  perspective-origin: center 42%;
+  perspective: 500px;
+  perspective-origin: center center;
   transform-style: preserve-3d;
 }
 
@@ -396,8 +396,8 @@ input {
   box-shadow: 0 10px 30px rgba(0, 0, 0, .45);
   cursor: pointer;
   will-change: transform, opacity, filter;
-  transition: opacity .18s ease, filter .18s ease, box-shadow .2s ease;
-  transform-origin: center 112%;
+  transition: transform .46s cubic-bezier(.22, .61, .25, 1), opacity .3s ease, filter .3s ease, box-shadow .34s ease, border-color .3s ease;
+  transform-origin: center center;
   transform-style: preserve-3d;
   backface-visibility: hidden;
 }
