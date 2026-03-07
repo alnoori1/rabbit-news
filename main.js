@@ -61,22 +61,126 @@ function isPaywalled(url) {
 
 /* ── Region / country RSS feeds ── */
 const REGIONS = [
-  { label: '🇺🇸 US', url: buildBingNewsSearchFeed('United States news') },
-  { label: '🇬🇧 UK', url: buildBingNewsSearchFeed('United Kingdom news') },
-  { label: '🇪🇺 Europe', url: buildBingNewsSearchFeed('Europe news') },
-  { label: '🌍 Africa', url: buildBingNewsSearchFeed('Africa news') },
-  { label: '🌏 Asia', url: buildBingNewsSearchFeed('Asia news') },
-  { label: '🏛️ Middle East', url: buildBingNewsSearchFeed('Middle East news') },
-  { label: '🇦🇺 Australia', url: buildBingNewsSearchFeed('Australia news') },
-  { label: '🌎 L. America', url: buildBingNewsSearchFeed('Latin America news') },
-  { label: '🇮🇳 India', url: buildBingNewsSearchFeed('India news') },
-  { label: '🇨🇳 China', url: buildBingNewsSearchFeed('China news') },
-  { label: '💼 Business', url: buildBingNewsSearchFeed('Business news') },
-  { label: '🔬 Sci/Tech', url: buildBingNewsSearchFeed('Technology news') },
-  { label: '⚽ Sport', url: buildBingNewsSearchFeed('Sports news') },
-  { label: '🎬 Entertain', url: buildBingNewsSearchFeed('Entertainment news') },
-  { label: '🏥 Health', url: buildBingNewsSearchFeed('Health news') },
+  {
+    key: 'us',
+    label: 'US',
+    feeds: buildRegionalFeedBundle({
+      directFeeds: ['https://feeds.bbci.co.uk/news/world/us_and_canada/rss.xml'],
+      queries: ['United States news', 'US politics', 'US economy']
+    })
+  },
+  {
+    key: 'uk',
+    label: 'UK',
+    feeds: buildRegionalFeedBundle({
+      directFeeds: ['https://feeds.bbci.co.uk/news/uk/rss.xml'],
+      queries: ['United Kingdom news', 'UK politics', 'Britain economy']
+    })
+  },
+  {
+    key: 'europe',
+    label: 'Europe',
+    feeds: buildRegionalFeedBundle({
+      directFeeds: ['https://feeds.bbci.co.uk/news/world/europe/rss.xml'],
+      queries: ['Europe news', 'European Union news', 'Europe politics']
+    })
+  },
+  {
+    key: 'africa',
+    label: 'Africa',
+    feeds: buildRegionalFeedBundle({
+      directFeeds: ['https://feeds.bbci.co.uk/news/world/africa/rss.xml'],
+      queries: ['Africa news', 'African Union news', 'East Africa news']
+    })
+  },
+  {
+    key: 'asia',
+    label: 'Asia',
+    feeds: buildRegionalFeedBundle({
+      directFeeds: ['https://feeds.bbci.co.uk/news/world/asia/rss.xml'],
+      queries: ['Asia news', 'East Asia news', 'South Asia news']
+    })
+  },
+  {
+    key: 'middle-east',
+    label: 'Middle East',
+    feeds: buildRegionalFeedBundle({
+      directFeeds: ['https://feeds.bbci.co.uk/news/world/middle_east/rss.xml'],
+      queries: ['Middle East news', 'Gulf news', 'Levant news']
+    })
+  },
+  {
+    key: 'australia',
+    label: 'Australia',
+    feeds: buildRegionalFeedBundle({
+      directFeeds: ['https://feeds.bbci.co.uk/news/world/australia/rss.xml'],
+      queries: ['Australia news', 'Oceania news', 'New Zealand news']
+    })
+  },
+  {
+    key: 'latin-america',
+    label: 'L. America',
+    feeds: buildRegionalFeedBundle({
+      directFeeds: ['https://feeds.bbci.co.uk/news/world/latin_america/rss.xml'],
+      queries: ['Latin America news', 'South America news', 'Central America news']
+    })
+  },
+  {
+    key: 'india',
+    label: 'India',
+    feeds: buildRegionalFeedBundle({
+      queries: ['India news', 'India politics', 'India economy']
+    })
+  },
+  {
+    key: 'china',
+    label: 'China',
+    feeds: buildRegionalFeedBundle({
+      queries: ['China news', 'China economy', 'China politics']
+    })
+  },
+  {
+    key: 'business',
+    label: 'Business',
+    feeds: buildRegionalFeedBundle({
+      directFeeds: ['https://feeds.bbci.co.uk/news/business/rss.xml'],
+      queries: ['Business news', 'Global markets news', 'Economy news']
+    })
+  },
+  {
+    key: 'science-tech',
+    label: 'Sci/Tech',
+    feeds: buildRegionalFeedBundle({
+      directFeeds: ['https://feeds.bbci.co.uk/news/technology/rss.xml'],
+      queries: ['Technology news', 'AI news', 'Science news']
+    })
+  },
+  {
+    key: 'sport',
+    label: 'Sport',
+    feeds: buildRegionalFeedBundle({
+      directFeeds: ['https://feeds.bbci.co.uk/sport/rss.xml'],
+      queries: ['Sports news', 'Football news', 'Basketball news']
+    })
+  },
+  {
+    key: 'entertainment',
+    label: 'Entertain',
+    feeds: buildRegionalFeedBundle({
+      directFeeds: ['https://feeds.bbci.co.uk/news/entertainment_and_arts/rss.xml'],
+      queries: ['Entertainment news', 'Film and TV news', 'Music news']
+    })
+  },
+  {
+    key: 'health',
+    label: 'Health',
+    feeds: buildRegionalFeedBundle({
+      directFeeds: ['https://feeds.bbci.co.uk/news/health/rss.xml'],
+      queries: ['Health news', 'Medical research news', 'Public health news']
+    })
+  },
 ];
+const REGION_MAP = new Map(REGIONS.map((region) => [region.key, region]));
 const REGIONS_VISIBLE = 6;
 
 /* ── DOM refs ── */
@@ -173,6 +277,20 @@ function addCacheBust(url) {
 
 function buildBingNewsSearchFeed(query) {
   return `https://www.bing.com/news/search?q=${encodeURIComponent(query)}&format=rss`;
+}
+
+function buildGoogleNewsSearchFeed(query, { hl = 'en-US', gl = 'US', ceid = 'US:en' } = {}) {
+  return `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=${encodeURIComponent(hl)}&gl=${encodeURIComponent(gl)}&ceid=${encodeURIComponent(ceid)}`;
+}
+
+function buildRegionalFeedBundle({ queries = [], directFeeds = [] } = {}) {
+  return [...new Set([
+    ...directFeeds,
+    ...queries.flatMap((query) => [
+      buildGoogleNewsSearchFeed(query),
+      buildBingNewsSearchFeed(query)
+    ])
+  ])];
 }
 
 function parsePublishedTs(value) {
@@ -427,18 +545,21 @@ function markCardSeen(card) {
 function appendNextCardBatch() {
   const nextCount = Math.min(state.cards.length, state.loadedCardCount + CARD_BATCH_SIZE);
   for (let index = state.loadedCardCount; index < nextCount; index += 1) {
-    els.deck.appendChild(createCardElement(state.cards[index], index));
+    const remainingAfterBatch = state.cards.length - nextCount;
+    const nextBatchCount = Math.min(CARD_BATCH_SIZE, Math.max(0, remainingAfterBatch));
+    const shouldShowLoadMore = index === nextCount - 1 && remainingAfterBatch > 0;
+    els.deck.appendChild(createCardElement(state.cards[index], index, { shouldShowLoadMore, nextBatchCount }));
   }
   state.loadedCardCount = nextCount;
 }
 
 function updateLoadMoreHint() {
   const remaining = state.cards.length - state.loadedCardCount;
-  const canLoadMore = remaining > 0;
+  const canLoadMore = remaining > 0 && state.activeCardIndex === state.loadedCardCount - 1;
   els.moreHint.classList.toggle('hidden', !canLoadMore);
   if (canLoadMore) {
     const nextBatch = Math.min(CARD_BATCH_SIZE, remaining);
-    els.moreHintText.textContent = `${nextBatch} more headlines below`;
+    els.moreHintText.textContent = `Scroll for ${nextBatch} more headlines`;
   }
 }
 
@@ -609,7 +730,7 @@ function renderRegions() {
   els.regionSelect.innerHTML = '<option value="" disabled selected>By Region</option>';
   REGIONS.forEach(r => {
     const opt = document.createElement('option');
-    opt.value = r.url;
+    opt.value = r.key;
     opt.textContent = r.label;
     els.regionSelect.appendChild(opt);
   });
@@ -799,7 +920,7 @@ function bindCardOpen(element, handler) {
   }, { passive: false });
 }
 
-function createCardElement(card, index) {
+function createCardElement(card, index, { shouldShowLoadMore = false, nextBatchCount = 0 } = {}) {
   const normalizedCard = normalizeCard(card);
   const article = document.createElement('article');
   article.className = 'news-card animate-in';
@@ -840,6 +961,23 @@ function createCardElement(card, index) {
   snippet.textContent = normalizedCard.summary || 'Tap to open full story.';
 
   content.append(meta, title, snippet);
+
+  if (shouldShowLoadMore) {
+    const loadMore = document.createElement('div');
+    loadMore.className = 'news-card-loadmore';
+
+    const label = document.createElement('span');
+    label.className = 'news-card-loadmore-label';
+    label.textContent = 'More';
+
+    const text = document.createElement('span');
+    text.className = 'news-card-loadmore-text';
+    text.textContent = `Scroll down for ${nextBatchCount} more headlines`;
+
+    loadMore.append(label, text);
+    content.appendChild(loadMore);
+  }
+
   article.appendChild(content);
 
   const openCard = () => {
@@ -1170,6 +1308,50 @@ async function fetchNewsFromUrl(url, label = 'Source News') {
   }
 }
 
+async function fetchCardsFromFeeds(feedUrls, { requestKeyPrefix, requestId, maxAgeHours = 7 * 24, sortFn = sortFreshCards } = {}) {
+  const results = await Promise.all(feedUrls.map((feedUrl, index) =>
+    apiWithRetry('/top', { url: addCacheBust(feedUrl) }, 'POST', { requestKey: `${requestKeyPrefix}:${index}` }).catch(() => ({ items: [] }))
+  ));
+
+  if (requestId !== state.cardsRequestId) {
+    return null;
+  }
+
+  return sortFn(dedupeCards(results.flatMap((result) => result.items || [])), { maxAgeHours });
+}
+
+async function fetchRegionNews(regionKey) {
+  const region = REGION_MAP.get(regionKey);
+  if (!region) {
+    setStatus('Region configuration not found.');
+    return;
+  }
+
+  const requestId = ++state.cardsRequestId;
+  state.currentFeedContext = { type: 'region', regionKey: region.key, label: region.label };
+
+  try {
+    showLoading(`Scanning ${region.feeds.length} regional sources...`);
+    const preparedCards = await fetchCardsFromFeeds(region.feeds, {
+      requestKeyPrefix: `region:${region.key}`,
+      requestId,
+      maxAgeHours: 10 * 24,
+      sortFn: sortFreshCards
+    });
+
+    if (preparedCards === null || requestId !== state.cardsRequestId) return;
+    hideLoading();
+
+    renderCards(preparedCards, `${region.label} News`);
+    setStatus(`${region.label}: ${preparedCards.length} headlines from ${region.feeds.length} sources`);
+  } catch (error) {
+    if (requestId !== state.cardsRequestId) return;
+    if (isSupersededRequest(error)) return;
+    hideLoading();
+    renderErrorCard(error.message, () => fetchRegionNews(region.key));
+  }
+}
+
 async function searchNews(query) {
   const q = String(query || '').trim();
   if (!q) return setStatus('Type a search term first.');
@@ -1178,19 +1360,22 @@ async function searchNews(query) {
 
   try {
     showLoading('Searching across sources…');
-    const searchFeeds = [
+    const searchFeeds = [...new Set([
       buildBingNewsSearchFeed(q),
       buildBingNewsSearchFeed(`"${q}"`),
-      buildBingNewsSearchFeed(`${q} latest`)
-    ];
-    const results = await Promise.all(searchFeeds.map((searchUrl, index) =>
-      apiWithRetry('/top', { url: addCacheBust(searchUrl) }, 'POST', { requestKey: `search:${index}` }).catch(() => ({ items: [] }))
-    ));
-    if (requestId !== state.cardsRequestId) return;
+      buildBingNewsSearchFeed(`${q} latest`),
+      buildGoogleNewsSearchFeed(q),
+      buildGoogleNewsSearchFeed(`"${q}"`)
+    ])];
+    const rankedCards = await fetchCardsFromFeeds(searchFeeds, {
+      requestKeyPrefix: 'search',
+      requestId,
+      maxAgeHours: 10 * 24,
+      sortFn: (cards) => sortSearchCards(cards, q)
+    });
+    if (rankedCards === null || requestId !== state.cardsRequestId) return;
     hideLoading();
-    const combinedCards = dedupeCards(results.flatMap((result) => result.items || []));
-    const rankedCards = sortSearchCards(combinedCards, q).slice(0, 60);
-    renderCards(rankedCards, `Search: ${q}`);
+    renderCards(rankedCards.slice(0, 120), `Search: ${q}`);
   } catch (error) {
     if (requestId !== state.cardsRequestId) return;
     if (isSupersededRequest(error)) return;
@@ -1297,6 +1482,8 @@ function bindUi() {
     if (state.view === 'cards' && state.currentFeedContext) {
       if (state.currentFeedContext.type === 'url') {
         fetchNewsFromUrl(state.currentFeedContext.url, state.currentFeedContext.label);
+      } else if (state.currentFeedContext.type === 'region') {
+        fetchRegionNews(state.currentFeedContext.regionKey);
       } else if (state.currentFeedContext.type === 'search') {
         searchNews(state.currentFeedContext.query);
       }
@@ -1319,11 +1506,11 @@ function bindUi() {
   });
 
   els.regionSelect.addEventListener('change', () => {
-    const query = els.regionSelect.value;
+    const regionKey = els.regionSelect.value;
     const opt = els.regionSelect.options[els.regionSelect.selectedIndex];
-    if (query) {
+    if (regionKey) {
       els.searchInput.value = '';
-      fetchNewsFromUrl(query, opt.textContent);
+      fetchRegionNews(regionKey);
       els.regionSelect.selectedIndex = 0; // Reset after navigation
     }
   });
@@ -1447,7 +1634,7 @@ function initR1Hardware() {
 /* ═══ Service Worker registration & cache busting ═══ */
 function registerSW() {
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js?v=66').then(reg => {
+    navigator.serviceWorker.register('./sw.js?v=67').then(reg => {
       reg.addEventListener('updatefound', () => {
         const newWorker = reg.installing;
         newWorker.addEventListener('statechange', () => {
