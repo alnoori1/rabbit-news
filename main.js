@@ -282,17 +282,10 @@ function buildBingNewsSearchFeed(query) {
   return `https://www.bing.com/news/search?q=${encodeURIComponent(query)}&format=rss`;
 }
 
-function buildGoogleNewsSearchFeed(query, { hl = 'en-US', gl = 'US', ceid = 'US:en' } = {}) {
-  return `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=${encodeURIComponent(hl)}&gl=${encodeURIComponent(gl)}&ceid=${encodeURIComponent(ceid)}`;
-}
-
 function buildRegionalFeedBundle({ queries = [], directFeeds = [] } = {}) {
   return [...new Set([
     ...directFeeds,
-    ...queries.flatMap((query) => [
-      buildGoogleNewsSearchFeed(query),
-      buildBingNewsSearchFeed(query)
-    ])
+    ...queries.map((query) => buildBingNewsSearchFeed(query))
   ])];
 }
 
@@ -403,7 +396,7 @@ function normalizeCard(card = {}) {
   const publishedTs = Number(card.publishedTs) || parsePublishedTs(card.published);
   const rawSource = decodeHtmlEntities(card.source || card.sourceName || '');
   const decodedTitle = decodeHtmlEntities(card.title || '');
-  const sourceOverride = ['news.google.com', 'bing.com', 'www.bing.com'].includes(rawSource) ? '' : rawSource;
+  const sourceOverride = ['bing.com', 'www.bing.com'].includes(rawSource) ? '' : rawSource;
   const split = splitHeadlineAndSource(decodedTitle, sourceOverride);
   const summary = decodeHtmlEntities(String(card.snippet || card.summary || '')).replace(/\s+/g, ' ').trim();
   const host = getHostFromUrl(url);
@@ -1332,9 +1325,7 @@ async function searchNews(query) {
     const searchFeeds = [...new Set([
       buildBingNewsSearchFeed(q),
       buildBingNewsSearchFeed(`"${q}"`),
-      buildBingNewsSearchFeed(`${q} latest`),
-      buildGoogleNewsSearchFeed(q),
-      buildGoogleNewsSearchFeed(`"${q}"`)
+      buildBingNewsSearchFeed(`${q} latest`)
     ])];
     const rankedCards = await fetchCardsFromFeeds(searchFeeds, {
       requestKeyPrefix: 'search',
