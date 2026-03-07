@@ -2,7 +2,7 @@
    R1 News Fetcher v26 — main.js
    ═══════════════════════════════════════════════ */
 
-const APP_VERSION = '81';
+const APP_VERSION = '82';
 const API_BASE = (localStorage.getItem('r1_api_base') || 'https://rabbit-news-worker.swordandscroll.workers.dev').replace(/\/$/, '');
 const BREAKING_FEEDS = [
   'https://feeds.bbci.co.uk/news/world/rss.xml',
@@ -23,10 +23,14 @@ const CARD_BATCH_SIZE = 20;
 const TAP_OPEN_MAX_DELTA = 12;
 const WHEEL_ANIMATION_DURATION_MS = 1480;
 const WHEEL_CONFIG = {
-  maxVisibleOffset: 2.2,
-  angleStep: 55,
-  radius: 104,
-  minScale: 0.45
+  maxVisibleOffset: 2.35,
+  angleStep: 72,
+  verticalRadius: 122,
+  depthRadius: 164,
+  minScale: 0.4,
+  minOpacity: 0.16,
+  maxBlur: 1.15,
+  sideTilt: 8
 };
 const LIVE_COVERAGE_TITLE_RE = /\b(live updates?|what to know|as it happened|live blog|minute by minute|watch live)\b/i;
 const LIVE_COVERAGE_URL_RE = /\/(?:live|live-updates?|blogs?)\/|\/live-updates(?:[-/]|$)|[?&]page=live\b/i;
@@ -809,6 +813,7 @@ function animateWheel(positionKey, targetKey, frameKey, startKey, fromKey, rende
 
 function scrollCards(direction) {
   if (!state.cards.length) return;
+  if (state.cardWheelFrame) return;
   const currentIndex = Math.max(0, Math.min(state.loadedCardCount - 1, Math.round(state.cardWheelTarget)));
   if (direction > 0 && currentIndex >= state.loadedCardCount - 1 && state.loadedCardCount < state.cards.length) {
     appendNextCardBatch();
@@ -911,24 +916,28 @@ function applyWheelTransformsToNodes(cards, activePosition, { updateLoadMore = f
     }
 
     const angle = offset * WHEEL_CONFIG.angleStep;
-    const radius = WHEEL_CONFIG.radius;
     const radians = angle * Math.PI / 180;
+    const sin = Math.sin(radians);
     const cos = Math.cos(radians);
-    const y = Math.sin(radians) * radius;
-    const z = (cos - 1) * radius * 1.08;
-    const scale = Math.max(WHEEL_CONFIG.minScale, cos);
-    const opacity = Math.max(0, (cos * 1.08) - 0.08);
-    const blur = absOff === 0 ? 0 : absOff < 1.1 ? 0.08 : 0.28;
-    const shadowAlpha = absOff === 0 ? 0.56 : absOff < 1.1 ? 0.42 : 0.26;
-    const rotateY = offset * -6.5;
+    const normalizedCos = Math.max(0, cos);
+    const y = sin * WHEEL_CONFIG.verticalRadius;
+    const z = (cos - 1) * WHEEL_CONFIG.depthRadius;
+    const x = offset * -4.5;
+    const scale = WHEEL_CONFIG.minScale + ((1 - WHEEL_CONFIG.minScale) * normalizedCos);
+    const opacity = WHEEL_CONFIG.minOpacity + ((1 - WHEEL_CONFIG.minOpacity) * normalizedCos);
+    const blur = absOff === 0 ? 0 : Math.min(WHEEL_CONFIG.maxBlur, absOff * 0.56);
+    const shadowAlpha = 0.18 + (normalizedCos * 0.42);
+    const rotateY = offset * -WHEEL_CONFIG.sideTilt;
+    const brightness = 0.58 + (normalizedCos * 0.42);
+    const zIndex = Math.round(400 + (normalizedCos * 120) - (absOff * 6));
 
     card.style.cssText = `
       display: block;
-      transform: translate3d(0, ${y.toFixed(2)}px, ${z.toFixed(2)}px) rotateX(${(-angle).toFixed(2)}deg) rotateY(${rotateY.toFixed(2)}deg) scale(${scale.toFixed(3)});
+      transform: translate3d(${x.toFixed(2)}px, ${y.toFixed(2)}px, ${z.toFixed(2)}px) rotateX(${(-angle).toFixed(2)}deg) rotateY(${rotateY.toFixed(2)}deg) scale(${scale.toFixed(3)});
       opacity: ${opacity.toFixed(3)};
-      z-index: ${Math.round(100 - (absOff * 12))};
-      pointer-events: ${i === focusedIndex ? 'auto' : 'none'};
-      filter: blur(${blur.toFixed(2)}px);
+      z-index: ${zIndex};
+      pointer-events: ${absOff < 0.36 ? 'auto' : 'none'};
+      filter: blur(${blur.toFixed(2)}px) brightness(${brightness.toFixed(3)});
       box-shadow: 0 ${10 + (absOff * 3)}px ${30 + (absOff * 4)}px rgba(0, 0, 0, ${shadowAlpha.toFixed(3)});
     `;
     card.classList.toggle('is-active', i === focusedIndex);
@@ -953,6 +962,7 @@ function applyBreakingWheelTransforms() {
 
 function scrollBreaking(direction) {
   if (!state.breakingCards.length) return;
+  if (state.breakingWheelFrame) return;
   const currentIndex = Math.max(0, Math.min(state.breakingCards.length - 1, Math.round(state.breakingWheelTarget)));
   const nextIndex = Math.max(0, Math.min(state.breakingCards.length - 1, currentIndex + direction));
   if (nextIndex === state.breakingWheelTarget) return;

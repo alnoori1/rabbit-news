@@ -334,11 +334,12 @@ input {
 /* ── 3D Wheel Deck ── */
 .deck {
   position: relative;
-  height: 196px;
+  height: 208px;
   margin: .7rem .1rem .1rem;
-  perspective: 500px;
-  perspective-origin: center center;
+  perspective: 260px;
+  perspective-origin: center 46%;
   transform-style: preserve-3d;
+  overflow: visible;
 }
 
 .card-counter {
@@ -384,7 +385,7 @@ input {
 /* ── News card (wheel item) ── */
 .news-card {
   position: absolute;
-  top: 10px;
+  top: 6px;
   left: 0;
   width: 100%;
   border-radius: 14px;
@@ -404,7 +405,7 @@ input {
 
 .news-card.is-active {
   border-color: rgba(240, 84, 98, .88);
-  box-shadow: 0 0 24px rgba(240, 84, 98, .25), 0 10px 30px rgba(0, 0, 0, .5);
+  box-shadow: 0 0 24px rgba(240, 84, 98, .28), 0 16px 40px rgba(0, 0, 0, .54);
   filter: blur(0) !important;
 }
 
