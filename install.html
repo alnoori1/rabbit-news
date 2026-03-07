@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rabbit News | Rabbit r1 Creation</title>
+  <meta
+    name="description"
+    content="Rabbit News is a Rabbit r1 creation for breaking headlines, regional browsing, search, and quick readable articles."
+  />
+  <meta property="og:title" content="Rabbit News" />
+  <meta
+    property="og:description"
+    content="A Rabbit r1 news hub with breaking headlines, regional browsing, search, and readable article mode."
+  />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://badrazzam9.github.io/rabbit-news/install.html" />
+  <meta property="og:image" content="https://badrazzam9.github.io/rabbit-news/creation-icon.png" />
+  <style>
+    :root {
+      --bg: #0b0d11;
+      --panel: #12161d;
+      --panel-2: #191f29;
+      --text: #f4f7fb;
+      --muted: #aeb7c4;
+      --accent: #f05462;
+      --accent-2: #ff875c;
+      --line: rgba(255, 255, 255, 0.08);
+      --shadow: 0 24px 60px rgba(0, 0, 0, 0.34);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "Helvetica Neue", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(900px 500px at 10% -10%, rgba(240, 84, 98, 0.16), transparent 45%),
+        radial-gradient(700px 380px at 100% 0%, rgba(255, 135, 92, 0.12), transparent 45%),
+        linear-gradient(180deg, #090b0f, #0d1015 45%, #121720 100%);
+    }
+
+    .wrap {
+      width: min(1080px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 40px 0 56px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1.2fr .9fr;
+      gap: 24px;
+      align-items: stretch;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      background:
+        linear-gradient(180deg, rgba(25, 31, 41, 0.92), rgba(13, 17, 24, 0.96)),
+        linear-gradient(140deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0));
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .hero-copy {
+      padding: 34px 34px 30px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.03);
+      color: #ffd6db;
+      font-size: 13px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow img {
+      width: 18px;
+      height: 18px;
+      border-radius: 5px;
+    }
+
+    h1 {
+      margin: 18px 0 12px;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(34px, 6vw, 58px);
+      line-height: 0.98;
+      letter-spacing: -0.03em;
+    }
+
+    .lead {
+      margin: 0;
+      max-width: 54ch;
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1.55;
+    }
+
+    .cta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 46px;
+      padding: 0 18px;
+      border-radius: 14px;
+      border: 1px solid transparent;
+      color: var(--text);
+      text-decoration: none;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      box-shadow: 0 12px 28px rgba(240, 84, 98, 0.26);
+    }
+
+    .btn-secondary {
+      border-color: var(--line);
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .meta-card {
+      padding: 14px 16px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .meta-card strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 13px;
+      color: #ffd6db;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .meta-card span {
+      color: var(--text);
+      font-size: 15px;
+    }
+
+    .qr-panel {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 30px 24px;
+      text-align: center;
+    }
+
+    .qr-frame {
+      width: min(100%, 320px);
+      padding: 18px;
+      border-radius: 24px;
+      background: #ffffff;
+      box-shadow: 0 18px 50px rgba(0, 0, 0, 0.26);
+    }
+
+    .qr-frame img {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    .qr-panel h2 {
+      margin: 18px 0 8px;
+      font-size: 24px;
+    }
+
+    .qr-panel p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .sections {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-top: 22px;
+    }
+
+    .section {
+      padding: 24px;
+    }
+
+    .section h3 {
+      margin: 0 0 14px;
+      font-size: 18px;
+      letter-spacing: -0.01em;
+    }
+
+    .section p {
+      margin: 0 0 12px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 10px;
+    }
+
+    .list li {
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      line-height: 1.45;
+    }
+
+    .list strong {
+      color: #ffd6db;
+    }
+
+    .footer-note {
+      margin-top: 18px;
+      text-align: center;
+      color: #93a0b2;
+      font-size: 13px;
+    }
+
+    @media (max-width: 860px) {
+      .hero,
+      .sections {
+        grid-template-columns: 1fr;
+      }
+
+      .wrap {
+        width: min(100% - 20px, 1080px);
+        padding-top: 20px;
+      }
+
+      .hero-copy,
+      .qr-panel,
+      .section {
+        padding: 22px;
+      }
+
+      .meta-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <div class="panel hero-copy">
+        <div class="eyebrow">
+          <img src="./creation-icon.png" alt="" />
+          <span>Rabbit r1 Creation</span>
+        </div>
+        <h1>Rabbit News</h1>
+        <p class="lead">
+          Rabbit News turns the Rabbit r1 into a fast, focused news hub for breaking headlines,
+          regional coverage, search, and clean article reading.
+        </p>
+
+        <div class="cta-row">
+          <a class="btn btn-primary" href="./rabbit-news-r1-install-qr.png">Open Install QR</a>
+          <a class="btn btn-secondary" href="./">Open Web App</a>
+          <a class="btn btn-secondary" href="https://github.com/badrazzam9/rabbit-news">GitHub Repo</a>
+        </div>
+
+        <div class="meta-grid">
+          <div class="meta-card">
+            <strong>Designed For</strong>
+            <span>Rabbit r1 creations</span>
+          </div>
+          <div class="meta-card">
+            <strong>Best Use</strong>
+            <span>Fast headline browsing</span>
+          </div>
+          <div class="meta-card">
+            <strong>Reading Mode</strong>
+            <span>Clean article fallback</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel qr-panel">
+        <div class="qr-frame">
+          <img src="./rabbit-news-r1-install-qr.png" alt="Rabbit News install QR code" />
+        </div>
+        <h2>Install On Rabbit r1</h2>
+        <p>
+          Scan this QR from the Rabbit creations flow to install Rabbit News on your device.
+        </p>
+      </div>
+    </section>
+
+    <section class="sections">
+      <div class="panel section">
+        <h3>What It Does</h3>
+        <p>
+          Rabbit News is built for quick use. Open it, browse breaking headlines, jump into regional news,
+          search by topic, and read articles in a compact format that works well on the Rabbit screen.
+        </p>
+        <ul class="list">
+          <li><strong>Breaking News:</strong> fresh headlines on the home screen.</li>
+          <li><strong>Regional News:</strong> browse news by region or area.</li>
+          <li><strong>Search:</strong> look up topics, countries, events, or people.</li>
+          <li><strong>Reader Mode:</strong> open cleaner article pages when possible.</li>
+          <li><strong>Source Fallback:</strong> open the original page when a site is not reader-friendly.</li>
+        </ul>
+      </div>
+
+      <div class="panel section">
+        <h3>Controls And Shortcuts</h3>
+        <ul class="list">
+          <li><strong>Scroll:</strong> move through the headline wheel.</li>
+          <li><strong>Tap:</strong> open the selected card.</li>
+          <li><strong>Refresh button:</strong> refresh the current screen.</li>
+          <li><strong>Home button:</strong> return to the main screen.</li>
+          <li><strong>Side button:</strong> go back from cards or article view.</li>
+          <li><strong>Font controls:</strong> increase or decrease article text size.</li>
+        </ul>
+      </div>
+    </section>
+
+    <p class="footer-note">
+      Live app: https://badrazzam9.github.io/rabbit-news/
+    </p>
+  </div>
+</body>
+
+</html>
