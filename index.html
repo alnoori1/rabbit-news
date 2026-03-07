@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=288, initial-scale=1.0, user-scalable=no" />
   <title>Rabbit News</title>
   <link rel="icon" href="data:," />
-  <link rel="stylesheet" href="./styles.css?v=64" />
+  <link rel="stylesheet" href="./styles.css?v=65" />
 </head>
 
 <body>
@@ -27,7 +27,7 @@
     </button>
     <span id="viewLabel" class="view-label">Home</span>
     <div id="fontTools" class="font-tools hidden" aria-label="Font size controls">
-      <button id="fontDown" class="nav-btn nav-btn-font" title="Smaller text" aria-label="Smaller text">A−</button>
+      <button id="fontDown" class="nav-btn nav-btn-font" title="Smaller text" aria-label="Smaller text">A-</button>
       <button id="fontUp" class="nav-btn nav-btn-font" title="Larger text" aria-label="Larger text">A+</button>
     </div>
   </nav>
@@ -38,22 +38,26 @@
         <h1>Rabbit News</h1>
       </header>
 
-      <!-- Compact Top Bar -->
       <div class="top-bar">
         <form id="searchForm" class="search-form">
-          <input type="search" id="searchInput" class="search-input" placeholder="Search news..." enterkeyhint="search"
-            required />
+          <input
+            type="search"
+            id="searchInput"
+            class="search-input"
+            placeholder="Search news..."
+            enterkeyhint="search"
+            required
+          />
         </form>
         <select id="regionSelect" class="region-select" aria-label="Select news region">
-          <option value="" disabled selected>🌍 By Region</option>
-          <!-- Options injected by JS -->
+          <option value="" disabled selected>By Region</option>
         </select>
       </div>
 
       <section class="card breaking-section">
-        <h3>⚡ Breaking News</h3>
+        <h3>Breaking News</h3>
         <div id="breakingDeck" class="deck breaking-wheel"></div>
-        <div id="breakingLoading" class="microcopy" style="text-align:center;padding:.3rem 0">Loading…</div>
+        <div id="breakingLoading" class="microcopy" style="text-align:center;padding:.3rem 0">Loading...</div>
       </section>
     </section>
 
@@ -61,7 +65,7 @@
       <div id="cardCounter" class="card-counter"></div>
       <section id="deck" class="deck" aria-label="News cards stack"></section>
       <div id="moreHint" class="more-hint hidden" aria-live="polite">
-        <span class="more-hint__icon" aria-hidden="true">↓</span>
+        <span class="more-hint__icon" aria-hidden="true">&#8595;</span>
         <span id="moreHintText">More headlines below</span>
       </div>
     </section>
@@ -70,16 +74,22 @@
       <article class="article-shell card">
         <img id="articleImage" class="article-lead-image hidden" alt="" />
         <h2 id="articleTitle">Article</h2>
+        <div id="articleNotice" class="article-note hidden" aria-live="polite"></div>
         <div id="articleSections" class="article-sections"></div>
-        <a id="articleSource" class="source-link source-link-bottom" href="#" target="_blank"
-          rel="noopener noreferrer">Open original source ↗</a>
+        <a
+          id="articleSource"
+          class="source-link source-link-bottom"
+          href="#"
+          target="_blank"
+          rel="noopener noreferrer"
+        >Open original source -&gt;</a>
       </article>
     </section>
   </main>
 
   <section id="status" class="status" aria-live="polite"></section>
 
-  <script src="./main.js?v=64"></script>
+  <script src="./main.js?v=65"></script>
 </body>
 
 </html>

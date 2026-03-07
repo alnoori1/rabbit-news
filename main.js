@@ -15,6 +15,7 @@ const RECENT_SEARCH_KEY = 'r1_recent_searches_v1';
 const RECENT_ARTICLE_KEY = 'r1_recent_articles_v1';
 const ARTICLE_FONT_KEY = 'r1_article_font_scale_v1';
 const SEEN_ARTICLE_KEY = 'r1_seen_article_ids_v1';
+const SOURCE_HEALTH_KEY = 'r1_source_health_v1';
 const SUPERSEDED_REQUEST_MESSAGE = 'Request replaced by a newer action.';
 const CARD_BATCH_SIZE = 20;
 const WHEEL_CONFIG = {
@@ -22,6 +23,22 @@ const WHEEL_CONFIG = {
   angleStep: 62,
   radius: 132,
   minScale: 0.32
+};
+const LIVE_COVERAGE_TITLE_RE = /\b(live updates?|what to know|as it happened|live blog|minute by minute|watch live)\b/i;
+const AGGREGATOR_HOST_PENALTIES = {
+  'aol.com': 1.5,
+  'msn.com': 1.8,
+  'uk.news.yahoo.com': 0.9,
+  'news.yahoo.com': 0.8,
+  'finance.yahoo.com': 0.8
+};
+const ARTICLE_WARNING_LABELS = {
+  thin_content: 'This source did not provide enough clean article text.',
+  high_link_density: 'This page was link-heavy and likely mixed with related headlines.',
+  headline_list: 'This page looked more like a headline list than a clean article.',
+  headline_noise: 'This article contained embedded headline clusters that were removed.',
+  related_content: 'Related-story blocks were removed for readability.',
+  readability_failed: 'This source did not produce a reliable reader view.'
 };
 
 /* ── Paywall domain blocklist ── */
@@ -86,6 +103,7 @@ const els = {
 
   articleImage: document.getElementById('articleImage'),
   articleTitle: document.getElementById('articleTitle'),
+  articleNotice: document.getElementById('articleNotice'),
   articleSource: document.getElementById('articleSource'),
   articleSections: document.getElementById('articleSections'),
 
@@ -110,6 +128,7 @@ const state = {
   lastBreakingRefreshAt: 0,
   loadedCardCount: 0,
   seenArticleIds: new Set(),
+  sourceHealth: {},
   suppressCardEnterUntil: 0
 };
 
@@ -215,6 +234,43 @@ function formatAge(publishedTs) {
   return `${days}d`;
 }
 
+function getHostFromUrl(url) {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return 'source';
+  }
+}
+
+function getSourcePenalty(host) {
+  const health = state.sourceHealth[host] || { clean: 0, sourceOnly: 0, failed: 0 };
+  const learnedPenalty = Math.max(0, (health.sourceOnly * 0.9) + (health.failed * 1.2) - (health.clean * 0.45));
+  return (AGGREGATOR_HOST_PENALTIES[host] || 0) + learnedPenalty;
+}
+
+function summarizeWarnings(warnings = []) {
+  const message = warnings.map((warning) => ARTICLE_WARNING_LABELS[warning]).filter(Boolean)[0];
+  return message || '';
+}
+
+function setArticleNotice(message = '', tone = 'info') {
+  if (!els.articleNotice) return;
+  els.articleNotice.textContent = message;
+  els.articleNotice.classList.toggle('hidden', !message);
+  els.articleNotice.classList.toggle('article-note--warn', tone === 'warn');
+}
+
+function buildCardFlags(card) {
+  const flags = [];
+  if (!state.seenArticleIds.has(card.id)) {
+    flags.push({ label: 'NEW', tone: 'new' });
+  }
+  if (getSourcePenalty(card.host) >= 2) {
+    flags.push({ label: 'SITE', tone: 'source' });
+  }
+  return flags;
+}
+
 function getCardId(card) {
   return card.id || card.url || card.link || `${card.title || ''}|${card.published || ''}`;
 }
@@ -227,6 +283,7 @@ function normalizeCard(card = {}) {
   const sourceOverride = ['news.google.com', 'bing.com', 'www.bing.com'].includes(rawSource) ? '' : rawSource;
   const split = splitHeadlineAndSource(decodedTitle, sourceOverride);
   const summary = decodeHtmlEntities(String(card.snippet || card.summary || '')).replace(/\s+/g, ' ').trim();
+  const host = getHostFromUrl(url);
   return {
     ...card,
     id: getCardId(card),
@@ -234,9 +291,11 @@ function normalizeCard(card = {}) {
     link: url,
     title: split.title || card.title || 'Untitled story',
     sourceLabel: split.source || sourceOverride || sourceFromUrl(url),
+    host,
     publishedTs,
     ageLabel: formatAge(publishedTs),
-    summary
+    summary,
+    isNew: !state.seenArticleIds.has(getCardId(card))
   };
 }
 
@@ -258,13 +317,19 @@ function applySeenBoost(card, baseScore) {
   return state.seenArticleIds.has(card.id) ? baseScore : baseScore + (4 * 60 * 60 * 1000);
 }
 
+function scoreFreshCard(card) {
+  const livePenalty = LIVE_COVERAGE_TITLE_RE.test(card.title) ? (5 * 60 * 60 * 1000) : 0;
+  const sourcePenalty = getSourcePenalty(card.host) * (90 * 60 * 1000);
+  return applySeenBoost(card, (card.publishedTs || 0) - livePenalty - sourcePenalty);
+}
+
 function sortFreshCards(cards = [], { maxAgeHours = 96 } = {}) {
   const cutoff = Date.now() - (maxAgeHours * 60 * 60 * 1000);
   return cards
     .map(normalizeCard)
     .filter((card) => card.url && !isPaywalled(card.url))
     .filter((card) => !card.publishedTs || card.publishedTs >= cutoff)
-    .sort((left, right) => applySeenBoost(right, right.publishedTs || 0) - applySeenBoost(left, left.publishedTs || 0));
+    .sort((left, right) => scoreFreshCard(right) - scoreFreshCard(left));
 }
 
 function scoreSearchCard(card, query) {
@@ -287,6 +352,11 @@ function scoreSearchCard(card, query) {
 
   if (tokens.length && tokens.every((token) => title.includes(token))) score += 1600000000;
   if (tokens.length && tokens.every((token) => (title + ' ' + summary).includes(token))) score += 900000000;
+
+  score -= getSourcePenalty(normalizedCard.host) * 450000000;
+  if (LIVE_COVERAGE_TITLE_RE.test(normalizedCard.title) && !/live/i.test(query)) {
+    score -= 350000000;
+  }
 
   return applySeenBoost(normalizedCard, score);
 }
@@ -425,7 +495,7 @@ async function storageLoad(key) {
 /* ═══ #16: Migrate localStorage → creationStorage ═══ */
 async function migrateStorage() {
   if (!window.creationStorage?.plain) return;
-  const keys = [RECENT_SEARCH_KEY, RECENT_ARTICLE_KEY, ARTICLE_FONT_KEY];
+  const keys = [RECENT_SEARCH_KEY, RECENT_ARTICLE_KEY, ARTICLE_FONT_KEY, SEEN_ARTICLE_KEY, SOURCE_HEALTH_KEY];
   for (const key of keys) {
     try {
       const old = localStorage.getItem(key);
@@ -491,7 +561,7 @@ function changeArticleFont(delta) {
 
 /* ═══ Collapsible region grid ═══ */
 function renderRegions() {
-  els.regionSelect.innerHTML = '<option value="" disabled selected>🌍 By Region</option>';
+  els.regionSelect.innerHTML = '<option value="" disabled selected>By Region</option>';
   REGIONS.forEach(r => {
     const opt = document.createElement('option');
     opt.value = r.url;
@@ -507,6 +577,36 @@ function renderEmptyState(container, emoji, message) {
   div.className = 'empty-state';
   div.innerHTML = `<span class="empty-emoji">${emoji}</span><span>${message}</span>`;
   container.appendChild(div);
+}
+
+function createCardMetaElement(card) {
+  const meta = document.createElement('div');
+  meta.className = 'news-card-meta';
+
+  const source = document.createElement('span');
+  source.className = 'news-card-source';
+  source.textContent = card.sourceLabel;
+
+  const age = document.createElement('span');
+  age.className = 'news-card-age';
+  age.textContent = card.ageLabel;
+
+  meta.append(source, age);
+
+  const flags = buildCardFlags(card);
+  if (flags.length) {
+    const flagWrap = document.createElement('span');
+    flagWrap.className = 'news-card-flags';
+    flags.forEach((flag) => {
+      const el = document.createElement('span');
+      el.className = `news-card-flag${flag.tone === 'source' ? ' news-card-flag--source' : ''}`;
+      el.textContent = flag.label;
+      flagWrap.appendChild(el);
+    });
+    meta.appendChild(flagWrap);
+  }
+
+  return meta;
 }
 
 /* ═══ Breaking news as 3D wheel ═══ */
@@ -541,9 +641,7 @@ function createBreakingCardElement(card, index) {
 
   const content = document.createElement('div');
   content.className = 'news-card-content';
-  const meta = document.createElement('div');
-  meta.className = 'news-card-meta';
-  meta.innerHTML = `<span class="news-card-source">${escapeHtml(normalizedCard.sourceLabel)}</span><span class="news-card-age">${escapeHtml(normalizedCard.ageLabel)}</span>`;
+  const meta = createCardMetaElement(normalizedCard);
   const title = document.createElement('h3');
   title.textContent = normalizedCard.title || `Story ${index + 1}`;
   content.append(meta, title);
@@ -688,9 +786,7 @@ function createCardElement(card, index) {
 
   const content = document.createElement('div');
   content.className = 'news-card-content';
-  const meta = document.createElement('div');
-  meta.className = 'news-card-meta';
-  meta.innerHTML = `<span class="news-card-source">${escapeHtml(normalizedCard.sourceLabel)}</span><span class="news-card-age">${escapeHtml(normalizedCard.ageLabel)}</span>`;
+  const meta = createCardMetaElement(normalizedCard);
 
   const title = document.createElement('h3');
   title.textContent = normalizedCard.title || `Story ${index + 1}`;
@@ -775,9 +871,160 @@ function renderCards(cards = [], sourceLabel = 'News') {
   setStatus(`${sourceLabel}: ${state.cards.length} cards`);
 }
 
+function recordSourceHealth(url, outcome = 'clean') {
+  const host = getHostFromUrl(url);
+  const current = state.sourceHealth[host] || { clean: 0, sourceOnly: 0, failed: 0 };
+  current[outcome] = (current[outcome] || 0) + 1;
+
+  // Keep the learned scoring bounded so one bad streak does not permanently poison a source.
+  ['clean', 'sourceOnly', 'failed'].forEach((key) => {
+    current[key] = Math.min(current[key], 12);
+  });
+
+  state.sourceHealth[host] = current;
+  storageSave(SOURCE_HEALTH_KEY, state.sourceHealth);
+}
+
+function pruneArticleDom(root) {
+  const junkSelector = [
+    'aside',
+    'nav',
+    'form',
+    'button',
+    '[aria-label*="related" i]',
+    '[class*="related" i]',
+    '[class*="recommended" i]',
+    '[class*="newsletter" i]',
+    '[class*="promo" i]',
+    '[class*="advert" i]',
+    '[class*="trending" i]',
+    '[class*="popular" i]',
+    '[class*="most-read" i]',
+    '[class*="live-blog" i]',
+    '[id*="related" i]',
+    '[id*="recommended" i]',
+    '[id*="trending" i]'
+  ].join(',');
+
+  root.querySelectorAll(junkSelector).forEach((node) => node.remove());
+
+  const cluePattern = /\b(related|recommended|more headlines|latest headlines|top stories|read more|you may also like|most read|live updates|watch live|newsletter|sign up|advertisement|trending|popular now|more coverage)\b/i;
+  root.querySelectorAll('section, div, ul, ol, aside').forEach((node) => {
+    if (!node.parentElement) return;
+    const text = decodeHtmlEntities((node.textContent || '').replace(/\s+/g, ' ').trim());
+    const textLength = text.length;
+    const paragraphs = node.querySelectorAll('p').length;
+    const links = node.querySelectorAll('a').length;
+    const listItems = node.querySelectorAll('li').length;
+    const headingCount = node.querySelectorAll('h2,h3,h4').length;
+    const attrText = `${node.id || ''} ${node.className || ''} ${node.getAttribute('aria-label') || ''}`;
+    const linkDensity = (Array.from(node.querySelectorAll('a')).reduce((sum, link) => sum + (link.textContent || '').trim().length, 0)) / Math.max(1, textLength);
+
+    if (paragraphs >= 4 || textLength >= 1800) return;
+
+    if (cluePattern.test(attrText) && paragraphs <= 2 && textLength < 1200) {
+      node.remove();
+      return;
+    }
+
+    if (cluePattern.test(text.slice(0, 180)) && paragraphs <= 2 && links >= 2 && textLength < 900) {
+      node.remove();
+      return;
+    }
+
+    if (listItems >= 4 && paragraphs <= 2 && links >= Math.max(3, Math.floor(listItems / 2))) {
+      node.remove();
+      return;
+    }
+
+    if (headingCount >= 4 && paragraphs <= 2 && linkDensity > 0.24) {
+      node.remove();
+      return;
+    }
+
+    if (linkDensity > 0.36 && textLength < 700) {
+      node.remove();
+    }
+  });
+}
+
+function analyzeArticleContent(root) {
+  const text = decodeHtmlEntities((root.textContent || '').replace(/\s+/g, ' ').trim());
+  const paragraphs = Array.from(root.querySelectorAll('p')).map((p) => (p.textContent || '').trim()).filter((value) => value.length >= 45);
+  const listItems = root.querySelectorAll('li').length;
+  const headingLike = Array.from(root.querySelectorAll('li,h2,h3,h4')).filter((node) => {
+    const value = (node.textContent || '').trim();
+    return value.length >= 18 && value.length <= 120 && !/[.!?]/.test(value);
+  }).length;
+  const linkTextLength = Array.from(root.querySelectorAll('a')).reduce((sum, link) => sum + (link.textContent || '').trim().length, 0);
+  const linkDensity = linkTextLength / Math.max(1, text.length);
+  const warnings = [];
+
+  if (text.length < 500 || paragraphs.length < 2) warnings.push('thin_content');
+  if (linkDensity > 0.24) warnings.push('high_link_density');
+  if (listItems >= 6 && paragraphs.length <= 4) warnings.push('headline_list');
+  if (headingLike >= 8 && paragraphs.length <= 4) warnings.push('headline_noise');
+  if (/\b(related stories|more headlines|latest headlines|top stories|recommended)\b/i.test(text)) warnings.push('related_content');
+
+  let qualityScore = 1;
+  if (warnings.includes('thin_content')) qualityScore -= 0.4;
+  if (warnings.includes('high_link_density')) qualityScore -= 0.28;
+  if (warnings.includes('headline_list')) qualityScore -= 0.36;
+  if (warnings.includes('headline_noise')) qualityScore -= 0.3;
+  if (warnings.includes('related_content')) qualityScore -= 0.14;
+
+  return {
+    textLength: text.length,
+    paragraphCount: paragraphs.length,
+    qualityScore: Math.max(0, Number(qualityScore.toFixed(2))),
+    warnings,
+    fallbackPreferred: qualityScore < 0.48 || warnings.includes('headline_list') || warnings.includes('headline_noise')
+  };
+}
+
+function shouldPreferSourceOnly(data) {
+  if (!data) return true;
+  if (data.mode === 'source_only' || data.fallbackPreferred) return true;
+  if (!data.content) return true;
+  if (Number(data.qualityScore) && Number(data.qualityScore) < 0.48) return true;
+  if ((data.warnings || []).includes('thin_content') && Number(data.paragraphCount || 0) <= 3 && Number(data.textLength || 0) < 900) {
+    return true;
+  }
+  if ((data.warnings || []).some((warning) => ['headline_list', 'headline_noise', 'high_link_density'].includes(warning))) {
+    return true;
+  }
+  return false;
+}
+
+function getSourceOnlyMessage(data) {
+  const warningMessage = summarizeWarnings(data?.warnings || []);
+  return warningMessage || 'This source did not produce a clean reader view. Use the original source below.';
+}
+
+function ensureArticleAssessment(data) {
+  if (!data?.content) return data;
+  if (typeof data.qualityScore === 'number' || data.fallbackPreferred || Array.isArray(data.warnings)) {
+    return data;
+  }
+
+  const wrapper = document.createElement('div');
+  wrapper.innerHTML = data.content;
+  pruneArticleDom(wrapper);
+  const assessment = analyzeArticleContent(wrapper);
+  return {
+    ...data,
+    content: wrapper.innerHTML,
+    ...assessment
+  };
+}
+
 /* ═══ Article with lead image (always preserved) ═══ */
 function renderArticle(data, fallbackImageUrl) {
   els.articleTitle.textContent = data.title || 'Article';
+  setArticleNotice(
+    data?.warnings?.length ? summarizeWarnings(data.warnings) || 'Reader view cleaned for better readability.' : '',
+    data?.warnings?.length ? 'warn' : 'info'
+  );
 
   // Show lead image: API image > fallback from card > hidden
   const imgUrl = data.image?.url || data.leadImage || fallbackImageUrl;
@@ -827,6 +1074,7 @@ function renderArticle(data, fallbackImageUrl) {
   });
   // Remove ALL inline images, pictures, and figures from the article content (user only wants the single top-level lead image)
   block.querySelectorAll('img, picture, figure').forEach(el => el.remove());
+  pruneArticleDom(block);
   els.articleSections.appendChild(block);
 }
 
@@ -852,6 +1100,7 @@ function renderArticleFallback(url, fallbackImageUrl, message) {
   els.articleSource.href = url;
   els.articleSource.classList.remove('hidden');
   els.articleSections.innerHTML = '';
+  setArticleNotice(message || 'Open the original source for the cleanest version of this story.', 'warn');
   renderEmptyState(els.articleSections, '📰', message || 'Open the original source to keep reading.');
   setView('article');
   applyArticleFontScale();
@@ -912,14 +1161,23 @@ async function readArticle(url, cardImageUrl, cardMeta = null) {
   }
   try {
     showLoading('Opening article…');
-    const data = await apiWithRetry('/article', { url: addCacheBust(url) }, 'POST', { requestKey: 'article' });
+    const rawData = await apiWithRetry('/article', { url: addCacheBust(url) }, 'POST', { requestKey: 'article' });
     hideLoading();
+    const data = ensureArticleAssessment(rawData);
 
     const textContent = data.textContent || data.content || '';
     if (textContent.length < 100) {
       setStatus('⚠️ Article may be behind a paywall — limited content available.', { persist: true });
     }
 
+    if (shouldPreferSourceOnly(data)) {
+      recordSourceHealth(url, 'sourceOnly');
+      renderArticleFallback(url, cardImageUrl, getSourceOnlyMessage(data));
+      setStatus(`Opened source view for ${new URL(url).hostname || 'source'}.`);
+      return;
+    }
+
+    recordSourceHealth(url, 'clean');
     renderArticle(data, cardImageUrl);
     setView('article');
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -928,6 +1186,7 @@ async function readArticle(url, cardImageUrl, cardMeta = null) {
   } catch (error) {
     if (isSupersededRequest(error)) return;
     hideLoading();
+    recordSourceHealth(url, 'failed');
     renderArticleFallback(url, cardImageUrl, 'Could not extract this story cleanly here. Use the source link below.');
     setStatus(error.message, { persist: true });
   }
@@ -975,9 +1234,12 @@ async function loadRecent() {
     state.articleFontScale = Number(fontVal) || 0.72;
     const seenIds = await storageLoad(SEEN_ARTICLE_KEY);
     state.seenArticleIds = new Set(Array.isArray(seenIds) ? seenIds : []);
+    const sourceHealth = await storageLoad(SOURCE_HEALTH_KEY);
+    state.sourceHealth = sourceHealth && typeof sourceHealth === 'object' ? sourceHealth : {};
   } catch {
     state.articleFontScale = 0.72;
     state.seenArticleIds = new Set();
+    state.sourceHealth = {};
   }
   applyArticleFontScale();
 }
@@ -1140,7 +1402,7 @@ function initR1Hardware() {
 /* ═══ Service Worker registration & cache busting ═══ */
 function registerSW() {
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js?v=64').then(reg => {
+    navigator.serviceWorker.register('./sw.js?v=65').then(reg => {
       reg.addEventListener('updatefound', () => {
         const newWorker = reg.installing;
         newWorker.addEventListener('statechange', () => {
@@ -1156,13 +1418,13 @@ function registerSW() {
 }
 
 /* ═══ #17: Boot with error boundary ═══ */
-function boot() {
+async function boot() {
   try {
     bindUi();
     initR1Hardware();
     renderRegions();
-    loadRecent();
-    migrateStorage(); // #16
+    await migrateStorage();
+    await loadRecent();
     setView('home', { push: false });
     history.replaceState({ view: 'home' }, '', '#home');
     healthCheck();
