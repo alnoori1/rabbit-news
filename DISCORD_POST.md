@@ -19,12 +19,8 @@ Controls:
 
 Install page:
 
-https://badrazzam9.github.io/rabbit-news/install.html
+https://alnoori1.github.io/rabbit-news/install.html
 
 Direct app:
 
-https://badrazzam9.github.io/rabbit-news/
-
-Direct Rabbit install QR:
-
-https://badrazzam9.github.io/rabbit-news/rabbit-news-r1-install-qr.png
+https://alnoori1.github.io/rabbit-news/

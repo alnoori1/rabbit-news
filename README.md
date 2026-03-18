@@ -6,9 +6,8 @@ It is designed for quick headline browsing, simple on-device reading, and smooth
 
 ## Live Links
 
-- App: https://badrazzam9.github.io/rabbit-news/
-- Install page: https://badrazzam9.github.io/rabbit-news/install.html
-- Rabbit install QR: https://badrazzam9.github.io/rabbit-news/rabbit-news-r1-install-qr.png
+- App: https://alnoori1.github.io/rabbit-news/
+- Install page: https://alnoori1.github.io/rabbit-news/install.html
 - Worker API: https://rabbit-news-worker.swordandscroll.workers.dev
 
 ## What It Does

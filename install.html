@@ -15,8 +15,8 @@
     content="A Rabbit r1 news hub with breaking headlines, regional browsing, search, and readable article mode."
   />
   <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://badrazzam9.github.io/rabbit-news/install.html" />
-  <meta property="og:image" content="https://badrazzam9.github.io/rabbit-news/creation-icon.png" />
+  <meta property="og:url" content="https://alnoori1.github.io/rabbit-news/install.html" />
+  <meta property="og:image" content="https://alnoori1.github.io/rabbit-news/creation-icon.png" />
   <style>
     :root {
       --bg: #0b0d11;
@@ -273,6 +273,17 @@
       }
     }
   </style>
+  <script>
+    const creationManifest = {
+      title: "Rabbit News",
+      url: "https://alnoori1.github.io/rabbit-news/",
+      description: "A Rabbit r1 news reader with breaking, regional, and search-driven headline wheels.",
+      iconUrl: "https://alnoori1.github.io/rabbit-news/creation-icon.png",
+      themeColor: "#fe5000"
+    };
+    const qrPayload = encodeURIComponent(JSON.stringify(creationManifest));
+    const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=640x640&data=${qrPayload}`;
+  </script>
 </head>
 
 <body>
@@ -290,9 +301,9 @@
         </p>
 
         <div class="cta-row">
-          <a class="btn btn-primary" href="./rabbit-news-r1-install-qr.png">Open Install QR</a>
+          <a class="btn btn-primary" id="installQrLink" href="#">Open Install QR</a>
           <a class="btn btn-secondary" href="./">Open Web App</a>
-          <a class="btn btn-secondary" href="https://github.com/badrazzam9/rabbit-news">GitHub Repo</a>
+          <a class="btn btn-secondary" href="https://github.com/alnoori1/rabbit-news">GitHub Repo</a>
         </div>
 
         <div class="meta-grid">
@@ -313,7 +324,7 @@
 
       <div class="panel qr-panel">
         <div class="qr-frame">
-          <img src="./rabbit-news-r1-install-qr.png" alt="Rabbit News install QR code" />
+          <img id="installQrImage" src="" alt="Rabbit News install QR code" />
         </div>
         <h2>Install On Rabbit r1</h2>
         <p>
@@ -352,9 +363,13 @@
     </section>
 
     <p class="footer-note">
-      Live app: https://badrazzam9.github.io/rabbit-news/
+      Live app: https://alnoori1.github.io/rabbit-news/
     </p>
   </div>
+  <script>
+    document.getElementById("installQrImage").src = qrImageUrl;
+    document.getElementById("installQrLink").href = qrImageUrl;
+  </script>
 </body>
 
 </html>
